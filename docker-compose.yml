@@ -1,0 +1,72 @@
+version: '3.9'
+services:
+  event-api:
+    container_name: event-api
+    hostname: 'event-api'
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "4000:4000"
+    environment:
+      - SAMPLING_RATIO=0.3
+      - IS_OTEL_TRACING_ENABLED=true
+      - SEND_LOCAL_OTEL_TRACES_TO_DD=true
+      - COLLECTOR_ENDPOINT=${TRACER_COLLECTOR_ENDPOINT}
+      - DATABASE_URL=DATABASE_URL${DATABASE_URL}
+      - SERVICE_NAME=${SERVICE_NAME}
+      - PORT={SERVICE_PORT}
+      - APP_ENV=${APP_ENV}
+      - NODE_ENV=production
+      - NODE_OPTIONS=--max_old_space_size=4096
+    volumes:
+      - ./prisma:/app/prisma
+    depends_on:
+      - postgres
+
+  tracing:
+    hostname: 'tracing'
+    image: jaegertracing/all-in-one:latest
+    ports:
+      - "6831:6831/udp"
+      - "6832:6832/udp"
+      - "5778:5778"
+      - "16686:16686"
+      - "4317:4317"
+      - "4318:4318"
+      - "14250:14250"
+      - "14268:14268"
+      - "14269:14269"
+      - "9411:9411"
+
+  mongodb:
+    image: mongo:4.2.6
+    container_name: mongodb
+    environment:
+      - MONGO_DATA_DIR=/data/db
+      - MONGO_LOG_DIR=/dev/null
+    volumes:
+      - MONGO_DATA:/data/db
+    ports:
+      - "27017:27017"
+    command: mongod
+volumes:
+  MONGO_DATA:
+
+#  postgres:
+#    image: postgres:13-alpine
+#    ports:
+#      - '5432:5432'
+#    container_name: 'postgres'
+#    hostname: 'postgres'
+#    restart: always
+#    volumes:
+#      - pg13-data:/var/lib/postgresql/data
+#    environment:
+#      - POSTGRES_USER=postgres
+#      - POSTGRES_PASSWORD=postgres
+#      - POSTGRES_DB=bees-campaign-manager-db
+#    networks:
+#      - default
+#volumes:
+#  pg13-data:
